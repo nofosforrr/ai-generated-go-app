@@ -1,0 +1,26 @@
+version: '3'
+services:
+  event-router:
+    build: .
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+    links:
+      - kafka
+  kafka:
+    image: wurstmeister/kafka
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: "kafka"
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_CREATE_TOPICS: "event-router:1:1"
+    ports:
+      - "9092:9092"
+    links:
+      - zookeeper
+  zookeeper:
+    image: wurstmeister/zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
