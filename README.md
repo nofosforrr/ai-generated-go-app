@@ -39,9 +39,6 @@ event-router/
     service:
       host: localhost
       port: 8080
-    kafka:
-      host: localhost
-      port: 9092
     ```
 5. **Запустите сервер**:
     ```bash
