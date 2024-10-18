@@ -1,4 +1,4 @@
-package event
+package handlers
 
 import (
 	"encoding/json"
@@ -9,46 +9,54 @@ import (
 )
 
 type EventRequest struct {
-	ID      uuid.UUID              `json:"event_id,omitempty"`
-	Context map[string]interface{} `json:"context"`
+	ID      uuid.UUID   `json:"id"`
+	Context interface{} `json:"context"`
 }
 
 var eventStore = make(map[uuid.UUID]EventRequest)
 
 func HandleEvent(w http.ResponseWriter, r *http.Request) {
-	if r.Method == "POST" {
-		var req EventRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		if req.ID == uuid.Nil {
-			req.ID = uuid.New()
-		}
-		fmt.Printf("Received event with ID: %s and context: %v\n", req.ID, req.Context)
-		eventStore[req.ID] = req
-		w.WriteHeader(http.StatusOK)
-		return
-	} else if r.Method == "GET" {
-		// Extract the event_id from the URL parameters
-		idStr := r.URL.Path[len("/event/"):]
-		id, err := uuid.Parse(idStr)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		event, exists := eventStore[id]
-		if !exists {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		// Return the event as JSON response
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(event)
-		return
-	} else {
-		w.WriteHeader(http.StatusMethodNotAllowed)
+	switch r.Method {
+	case "POST":
+		handlePost(w, r)
+	case "GET":
+		handleGet(w, r)
+	default:
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+func handlePost(w http.ResponseWriter, r *http.Request) {
+	var req EventRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
+
+	if req.ID == uuid.Nil {
+		req.ID = uuid.New()
+	}
+
+	fmt.Printf("Received event with ID: %s and context: %v\n", req.ID, req.Context)
+	eventStore[req.ID] = req
+	w.WriteHeader(http.StatusOK)
+}
+
+func handleGet(w http.ResponseWriter, r *http.Request) {
+	idStr := r.URL.Path[len("/event/"):]
+	id, err := uuid.Parse(idStr)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	event, exists := eventStore[id]
+	if !exists {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(event)
 }
